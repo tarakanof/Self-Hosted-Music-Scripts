@@ -1,0 +1,19 @@
+.ntfy-token
+*.log
+*.log.1
+music-pipeline.sh.tracked
+music-reprocess.log
+music-reprocess.log.*
+reprocess-backups/
+.claude/settings.local.json
+.remember/
+.lidarr-api-key
+config/*.local
+config/**/*.local
+private/
+
+# session artifacts kept locally, not published
+docs/handoff-*.md
+docs/superpowers/
+docs/case-e/
+docs/split-pairs-dryrun/

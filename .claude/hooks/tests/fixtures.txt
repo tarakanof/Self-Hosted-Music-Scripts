@@ -1,0 +1,15 @@
+ALLOW|benign ls|ls -la /tmp
+deny|album_id trap|docker exec -u abc beets beet remove -a -f album_id:64
+deny|album_id -ay combined flag|docker exec -u abc beets beet modify -ay album_id:148 albumartist=X
+ALLOW|safe id:N form|docker exec -u abc beets beet modify -a -y id:148 albumartist=X
+deny|rsync --remove-source-files trap|rsync -av --remove-source-files /tmp/foo/ /mnt/user/Media/Music/Bar/
+ask|beet update scoped|docker exec -u abc beets beet update id:42
+ALLOW|git commit msg with rsync text|git -C /repo commit -m 'mention rsync --remove-source-files /mnt/user/ here'
+ALLOW|git commit msg with album_id text|git commit -m 'beet remove -a -f album_id:64 was bad'
+ALLOW|cat over log mentioning patterns|cat music-pipeline.log | grep --remove-source-files
+ALLOW|grep over AGENTS.md|grep 'beet remove -a -f album_id' AGENTS.md
+deny|sudo rsync still caught|sudo rsync --remove-source-files /tmp/x/ /mnt/user/y/
+deny|chained AND with rsync danger|git commit -m msg && rsync --remove-source-files /tmp/x/ /mnt/user/y/
+deny|chained semicolon with album_id trap|echo hi; docker exec -u abc beets beet remove -a -f album_id:64
+ALLOW|chained safe git ops|git commit -m wip && git push
+ask|chained beet update|docker stats --no-stream && docker exec -u abc beets beet update id:99

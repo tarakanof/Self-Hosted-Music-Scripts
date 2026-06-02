@@ -1,0 +1,41 @@
+# Example beets config matching this pipeline's import assumptions.
+# Copy into the beets container config path, commonly /config/config.yaml.
+
+directory: /music
+library: /config/musiclibrary.blb
+
+plugins: musicbrainz fetchart embedart scrub lastgenre chroma web lyrics
+original_date: yes
+
+import:
+  write: yes
+  copy: no
+  move: yes
+  incremental: yes
+  quiet_fallback: skip
+  resume: yes
+
+match:
+  strong_rec_thresh: 0.15
+
+paths:
+  default: $albumartist/%if{$original_year,$album ($original_year),$album}/$albumartist - $album - $track - $title
+  singleton: Non-Album/$artist/$title
+  comp: Compilations/%if{$original_year,$album ($original_year),$album}/$track - $title
+  'albumtype:soundtrack': Soundtracks/%if{$original_year,$album ($original_year),$album}/$track - $title
+
+fetchart:
+  sources: filesystem coverart itunes
+  minwidth: 500
+
+embedart:
+  maxwidth: 1200
+
+lyrics:
+  auto: yes
+  sources: lrclib genius
+
+replace:
+  '[\\/]': _
+  '[<>:"?*|]': _
+  '[\x00-\x1f]': _

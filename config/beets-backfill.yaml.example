@@ -1,0 +1,13 @@
+# Read-only beets config for rebuilding musiclibrary.blb from an existing
+# library without moving or retagging files.
+
+directory: /music
+library: /config/musiclibrary.blb
+plugins: []
+
+import:
+  write: no
+  copy: no
+  move: no
+  incremental: yes
+  quiet_fallback: asis
