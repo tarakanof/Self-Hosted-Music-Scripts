@@ -150,7 +150,9 @@ for ID in "${ALL_IDS[@]}"; do
     PERCENT=$(tr_field "$INFO" "Percent Done")
 
     # Track stuck torrents (for end-of-run report)
-    pct_num=$(printf '%s' "$PERCENT" | tr -d '%' | awk '{print $1+0}')
+    # Truncate to an integer: Transmission reports percentDone as a float
+    # (e.g. 99.2), and the `-eq 100` / `= "0"` tests below require integers.
+    pct_num=$(printf '%s' "$PERCENT" | tr -d '%' | awk '{printf "%d", $1+0}')
     if [ "$pct_num" = "0" ] && [ "$STATE" != "Downloading" ] && [ "$STATE" != "Queued" ]; then
         STUCK+=("$ID:$NAME")
         continue
