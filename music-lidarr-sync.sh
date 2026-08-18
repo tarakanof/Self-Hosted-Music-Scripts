@@ -36,19 +36,16 @@ ntfy() {
 }
 
 # ----- prelude -----
-if [ -e "$LOCK" ]; then
-    err "lock exists: $LOCK; aborting"; exit 0
-fi
-echo $$ > "$LOCK"
-trap 'rm -f "$LOCK"' EXIT
+# Single-instance lock. Held with flock rather than a PID file so that other
+# scripts can probe it with `flock -n` — see music-health-check.sh.
+exec 200>"$LOCK"
+flock -n 200 || { err "another sync is running (lock: $LOCK); aborting"; exit 0; }
 
-if [ -e "$PIPELINE_LOCK" ]; then
-    pid=$(cat "$PIPELINE_LOCK" 2>/dev/null)
-    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-        log "music-pipeline.sh holds lock (pid $pid) — skipping this tick"; exit 0
-    else
-        log "stale pipeline lock; ignoring"
-    fi
+# Yield to the pipeline if it is running. Use flock to distinguish a held lock
+# from a stale file left behind by a prior run; music-pipeline.sh holds its
+# lock with flock and never writes a PID into it.
+if [ -e "$PIPELINE_LOCK" ] && ! flock -n "$PIPELINE_LOCK" -c true 2>/dev/null; then
+    log "music-pipeline.sh holds lock — skipping this tick"; exit 0
 fi
 
 [ -r "$LIDARR_KEY_FILE" ] || { err "no Lidarr key at $LIDARR_KEY_FILE"; exit 1; }
