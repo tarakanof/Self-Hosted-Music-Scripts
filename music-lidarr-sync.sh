@@ -237,9 +237,14 @@ FNR==NR {
     tc = ltrackcount[matched]+0
 
     if ((via == "fuzzy" || via == "album_only") && (bmbrg == "" || bmbrg == "0")) {
-        # Case D: low-confidence (no MBID, fuzzy or album-only match)
-        printf "D\t%s\t%s\t%s\t%s\tlid=%s files=%d/%d (suggest: beet modify mb_albumid=...)\n",
-            bid, bartist, balbum, bpath, lid[matched], tf, tc
+        # Case D: low-confidence (no MBID, fuzzy or album-only match).
+        # The suggestion sets mb_releasegroupid, not mb_albumid: the Lidarr
+        # foreignAlbumId is a release-GROUP MBID, and the by_rg match above is
+        # what promotes a row to Case A. -M keeps beets from recomputing the
+        # path, which would otherwise rename folders and files as a side effect
+        # of the tag write.
+        printf "D\t%s\t%s\t%s\t%s\tlid=%s files=%d/%d (suggest: beet modify -a -M -y id:%s mb_releasegroupid=%s)\n",
+            bid, bartist, balbum, bpath, lid[matched], tf, tc, bid, lfaid[matched]
         cD++
     } else if (tf == 0) {
         # Case C: lost-path
