@@ -94,6 +94,12 @@ ensure_beets_running() {
     fi
 }
 
+# Count audio files under a directory, recursively. Mirrors how MUSIC_COUNT is
+# computed for the download side so the two are directly comparable.
+album_audio_count() {
+    find "$1" -type f 2>/dev/null | grep -ciE "$MUSIC_RE"
+}
+
 get_tr_password() {
     if [ -n "$TRANSMISSION_RPC_PASSWORD_FILE" ] && [ -r "$TRANSMISSION_RPC_PASSWORD_FILE" ]; then
         head -1 "$TRANSMISSION_RPC_PASSWORD_FILE"
@@ -292,6 +298,25 @@ for ID in "${ALL_IDS[@]}"; do
                 done < <(find "$MUSIC_HOST" -mindepth 1 -maxdepth 1 -type d \
                     -iname "$PC_ALBUMARTIST" 2>/dev/null)
                 if [ -n "$dup_match" ]; then
+                    # A name match alone does not mean the download is redundant:
+                    # it may be a more complete edition of an album we only
+                    # partly own (e.g. a 14-track release vs our 13-track rip).
+                    # Deleting those is why such gaps could never be filled, so
+                    # route them to review for a human decision instead.
+                    LIB_COUNT=$(album_audio_count "$dup_match")
+                    if [ "$MUSIC_COUNT" -gt "$LIB_COUNT" ]; then
+                        log "PRE-CHECK upgrade candidate: $NAME ($MUSIC_COUNT tracks) vs $dup_match ($LIB_COUNT tracks)"
+                        mkdir -p "$REVIEW_DIR"
+                        if mv -f "$SRC" "$REVIEW_DIR/" 2>/dev/null; then
+                            REVIEWED=$((REVIEWED + 1))
+                            ntfy "Upgrade candidate" \
+                                "${NAME} has $MUSIC_COUNT tracks vs $LIB_COUNT in ${dup_match##*/} — moved to review" \
+                                default "mag,musical_note"
+                        else
+                            log "ERROR: could not move $SRC to review"
+                        fi
+                        continue
+                    fi
                     log "PRE-CHECK duplicate: $NAME matches $dup_match"
                     rm -rf "$SRC"
                     DUPLICATES=$((DUPLICATES + 1))
