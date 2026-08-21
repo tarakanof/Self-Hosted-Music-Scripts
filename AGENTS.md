@@ -113,6 +113,31 @@ checking for:
   the folder convention expects years.
 - **Blind `yes`:** if beets prompts, feed the expected answer explicitly. A
   generic `yes` can loop on prompts that do not accept lowercase `y`.
+- **`beet move` resolves drift the wrong way:** it rewrites folders to match
+  tags. When the tags are the side that drifted, correct them from MusicBrainz
+  first. See `docs/decisions/2026-08-20-tag-first-library-realignment.md`.
+- **`mbsync` needs track-level MBIDs:** it requires `mb_albumid` (a release ID,
+  not a release-group ID), and it applies metadata only to items carrying
+  `mb_trackid` / `mb_releasetrackid`. With neither, it silently changes nothing
+  while still logging `applying changes to <album>`.
+- **`import -L` renumbers album IDs:** it deletes and recreates album rows, so
+  any saved id list is stale afterwards. Re-derive ids and verify total album
+  and item counts are unchanged.
+- **Autotagger results are not reproducible:** the same album and query can
+  apply in one run and be skipped in the next. Preview runs forecast, they do
+  not guarantee.
+- **`import -q` skips weak matches silently:** anything below a `strong`
+  recommendation is dropped with no summary. Count skips explicitly.
+- **Artist-directory renames can split an artist:** always compare the parent
+  directory of source and destination before moving. A compound artist
+  (`X feat. Y`) with no existing folder splits a discography; a move into an
+  artist folder that already exists merges one. Check which case applies.
+- **Never move a folder for an album the importer skipped:** its tags are
+  unchanged, so a downstream manager that drops the old path may then refuse to
+  re-match the new one.
+- **Do not measure a downstream manager mid-scan:** a queued or running rescan
+  reports a partially rebuilt index that looks exactly like data loss. Confirm
+  the command queue is empty before trusting any count.
 
 ## Public Readiness
 
