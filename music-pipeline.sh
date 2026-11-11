@@ -142,6 +142,7 @@ FAILED=0
 VIDEO_MOVED=0
 SKIPPED_ARR=0
 ARR_SKIPPED_NOW=()
+ALL_NAMES_NOW=()
 DUPLICATES=0
 STUCK=()
 declare -A LIDARR_NOTIFY_ARTISTS=()
@@ -151,6 +152,7 @@ for ID in "${ALL_IDS[@]}"; do
     [ -z "$INFO" ] && continue
 
     NAME=$(tr_field "$INFO" "Name")
+    ALL_NAMES_NOW+=("$NAME")
     STATE=$(tr_field "$INFO" "State")
     LOCATION=$(tr_field "$INFO" "Location")
     RATIO=$(tr_field "$INFO" "Ratio")
@@ -498,7 +500,16 @@ if [ "${#LIDARR_NOTIFY_ARTISTS[@]}" -gt 0 ]; then
 fi
 
 mkdir -p "$(dirname "$PIPELINE_ARR_SKIP_SEEN")"
-printf '%s\n' "${ARR_SKIPPED_NOW[@]}" | sed '/^$/d' > "$PIPELINE_ARR_SKIP_SEEN"
+# Keep a name while its torrent is still in Transmission in any state, not only
+# when it was skipped this run: seeding torrents flip between Seeding and
+# Finished/Idle, and dropping them on a Seeding run re-logged them next time.
+{
+    printf '%s\n' "${ARR_SKIPPED_NOW[@]}"
+    if [ -f "$PIPELINE_ARR_SKIP_SEEN" ] && [ "${#ALL_NAMES_NOW[@]}" -gt 0 ]; then
+        grep -xFf <(printf '%s\n' "${ALL_NAMES_NOW[@]}") "$PIPELINE_ARR_SKIP_SEEN" || true
+    fi
+} | sed '/^$/d' | sort -u > "$PIPELINE_ARR_SKIP_SEEN.tmp" \
+    && mv "$PIPELINE_ARR_SKIP_SEEN.tmp" "$PIPELINE_ARR_SKIP_SEEN"
 
 # --- Summary + ntfy ---
 SUMMARY="imported=$IMPORTED dup=$DUPLICATES review=$REVIEWED video_moved=$VIDEO_MOVED failed=$FAILED arr_skipped=$SKIPPED_ARR stuck=${#STUCK[@]} lidarr_notified=${#LIDARR_NOTIFY_ARTISTS[@]}"
