@@ -5,6 +5,7 @@ music-pipeline.sh.tracked
 music-reprocess.log
 music-reprocess.log.*
 reprocess-backups/
+state/
 .claude/settings.local.json
 .remember/
 .lidarr-api-key

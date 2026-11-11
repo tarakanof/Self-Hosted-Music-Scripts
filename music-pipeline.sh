@@ -141,6 +141,7 @@ REVIEWED=0
 FAILED=0
 VIDEO_MOVED=0
 SKIPPED_ARR=0
+ARR_SKIPPED_NOW=()
 DUPLICATES=0
 STUCK=()
 declare -A LIDARR_NOTIFY_ARTISTS=()
@@ -180,7 +181,9 @@ for ID in "${ALL_IDS[@]}"; do
     # extension and trigger the wrap-then-fail loop in beets. Not a music
     # pipeline target; user processes them separately.
     if should_skip_download_location "$LOCATION"; then
-        log "skip arr-managed: $NAME ($LOCATION)"
+        # Seeding torrents stay here for weeks; log each one once, not hourly.
+        grep -qxF "$NAME" "$PIPELINE_ARR_SKIP_SEEN" 2>/dev/null || log "skip arr-managed: $NAME ($LOCATION)"
+        ARR_SKIPPED_NOW+=("$NAME")
         SKIPPED_ARR=$((SKIPPED_ARR + 1))
         continue
     fi
@@ -493,6 +496,9 @@ if [ "${#LIDARR_NOTIFY_ARTISTS[@]}" -gt 0 ]; then
         lidarr_notify_artist "$artist"
     done
 fi
+
+mkdir -p "$(dirname "$PIPELINE_ARR_SKIP_SEEN")"
+printf '%s\n' "${ARR_SKIPPED_NOW[@]}" | sed '/^$/d' > "$PIPELINE_ARR_SKIP_SEEN"
 
 # --- Summary + ntfy ---
 SUMMARY="imported=$IMPORTED dup=$DUPLICATES review=$REVIEWED video_moved=$VIDEO_MOVED failed=$FAILED arr_skipped=$SKIPPED_ARR stuck=${#STUCK[@]} lidarr_notified=${#LIDARR_NOTIFY_ARTISTS[@]}"
