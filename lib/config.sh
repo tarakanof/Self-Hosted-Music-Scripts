@@ -61,6 +61,10 @@ export LC_ALL="$MUSIC_PIPELINE_LOCALE"
 
 : "${LIDARR_URL:=http://localhost:8686}"
 : "${LIDARR_KEY_FILE:=$APP_ROOT/.lidarr-api-key}"
+# Music root as Lidarr's container sees it (used to translate beets paths).
+: "${LIDARR_MUSIC_ROOT:=$CONTAINER_MUSIC_ROOT}"
+# Max Case C rows the sync diagnoses via Lidarr's manual-import preview.
+: "${LIDARR_SYNC_DIAGNOSE_MAX:=20}"
 
 : "${NTFY_BASE_URL:=http://localhost:2586}"
 : "${NTFY_TOPIC:=music-pipeline}"
