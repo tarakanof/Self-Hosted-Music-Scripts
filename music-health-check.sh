@@ -251,6 +251,7 @@ log "report written: $REPORT"
 # --- Diff against previous run: what's NEW this week? ---
 # Cached prev snapshots live alongside the current TSVs. First run just
 # initialises them (no "new" delta possible).
+mkdir -p "$(dirname "$HEALTH_PREV_DUPS")"
 PREV_DUPS="$HEALTH_PREV_DUPS"
 PREV_ARTIST_DUPS="$HEALTH_PREV_ARTIST_DUPS"
 PREV_BROKEN="$HEALTH_PREV_BROKEN"

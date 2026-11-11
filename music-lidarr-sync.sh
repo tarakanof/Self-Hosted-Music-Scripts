@@ -247,7 +247,9 @@ FNR==NR {
             bid, bartist, balbum, bpath, lid[matched], tf, tc, bid, lfaid[matched]
         cD++
     } else if (tf == 0) {
-        # Case C: lost-path
+        # Case C: Lidarr has the album but links no files. The cause is filled
+        # in after classification by diagnose_case_c (a RefreshArtist alone
+        # rarely helps: usually Lidarr rejects the files as a release mismatch).
         printf "C\t%s\t%s\t%s\t%s\tlid=%s artistId=%s — needs RefreshArtist\n",
             bid, bartist, balbum, bpath, lid[matched], laid[matched]
         cC++
@@ -291,6 +293,48 @@ G=$(echo "$counts" | awk -F'[\t=]' '/^COUNTS/{print $13}')
 log "results: A=$A  B=$B  C=$C  D=$D  E=$E  G=$G"
 log "report: $REPORT_TSV"
 
+# ----- Phase 4: explain Case C rows -----
+# Ask Lidarr's manual-import preview (read-only: GET builds import decisions,
+# imports nothing) why it will not link the files in each folder, and replace
+# the generic hint with the actual cause.
+diagnose_case_c() {
+    local row bpath lpath resp nfiles reasons hint n=0 tmp="$REPORT_TSV.tmp"
+    while IFS= read -r row; do
+        if [ "${row%%$'\t'*}" != "C" ] || [ "$n" -ge "$LIDARR_SYNC_DIAGNOSE_MAX" ]; then
+            printf '%s\n' "$row"; continue
+        fi
+        n=$((n + 1))
+        bpath=$(cut -f5 <<<"$row")
+        lpath="$LIDARR_MUSIC_ROOT${bpath#"$CONTAINER_MUSIC_ROOT"}"
+        if ! resp=$(curl -sf --max-time 120 -G -H "X-Api-Key: $KEY" \
+                "$LIDARR_URL/api/v1/manualimport" \
+                --data-urlencode "folder=$lpath" \
+                --data-urlencode "filterExistingFiles=false") \
+           || ! nfiles=$(jq 'length' <<<"$resp" 2>/dev/null); then
+            hint="needs RefreshArtist (could not query Lidarr import preview)"
+        elif [ "$nfiles" -eq 0 ]; then
+            hint="Lidarr sees no audio files at $lpath — check path mapping"
+        else
+            # Most common rejection first, e.g. "Album match is not close
+            # enough: 67.1 % vs 80 % [country, tracks]".
+            reasons=$(jq -r '[.[].rejections[]?.reason] | group_by(.)
+                | sort_by(-length) | map("\(length)x \(.[0])") | join("; ")' <<<"$resp")
+            if [ -n "$reasons" ]; then
+                hint="Lidarr rejects $nfiles files: $reasons — select the matching release in Lidarr (album → edit), or retag in beets"
+            else
+                hint="Lidarr accepts all $nfiles files but has not linked them — run Manual Import on $lpath"
+            fi
+        fi
+        printf '%s\n' "$row" | awk -F'\t' -v OFS='\t' -v h="$hint" '{sub(/ — needs RefreshArtist$/, " — " h, $6); print}'
+    done < "$REPORT_TSV" > "$tmp" && mv "$tmp" "$REPORT_TSV"
+}
+
+if [ "${C:-0}" -gt 0 ] && [ "$LIDARR_SYNC_DIAGNOSE_MAX" -gt 0 ]; then
+    log "diagnosing $C Case-C rows (max $LIDARR_SYNC_DIAGNOSE_MAX) via Lidarr import preview..."
+    diagnose_case_c
+    grep -P '^C\t' "$REPORT_TSV" | awk -F'\t' '{d=$6; sub(/^[^—]*— /, "", d); print "  C: " $3 " / " $4 " — " d}' >> "$LOG"
+fi
+
 if [ "${E:-0}" -gt 0 ]; then
     log "CRITICAL: $E Case-E rows (Lidarr expects files not on disk per beets) — top 10:"
     grep -P '^E\t' "$REPORT_TSV" | head -10 | awk -F'\t' '{print "  E: " $3 " / " $4}' >> "$LOG"
@@ -300,7 +344,7 @@ fi
 prio="default"; tags="musical_note"
 [ "${E:-0}" -gt 0 ] && { prio="high"; tags="warning,musical_note"; }
 ntfy "lidarr-sync $(date +%F)" \
-    "$(printf '✓ %s clean (A)\n⚠ %s partial (B)\n⚠ %s lost-path (C)\n⚠ %s no-MBID (D)\n🔥 %s Lidarr-only (E)\n⚠ %s beets-only (G)\nlog: %s' "$A" "$B" "$C" "$D" "$E" "$G" "$LOG")" \
+    "$(printf '✓ %s clean (A)\n⚠ %s partial (B)\n⚠ %s unlinked in Lidarr (C)\n⚠ %s no-MBID (D)\n🔥 %s Lidarr-only (E)\n⚠ %s beets-only (G)\nlog: %s' "$A" "$B" "$C" "$D" "$E" "$G" "$LOG")" \
     "$prio" "$tags"
 
 log "=== sync run end ==="

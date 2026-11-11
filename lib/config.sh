@@ -34,6 +34,9 @@ export LC_ALL="$MUSIC_PIPELINE_LOCALE"
 
 : "${APP_ROOT:=$SCRIPT_ROOT}"
 : "${TMP_DIR:=/tmp}"
+# Survives reboots (TMP_DIR on Unraid is RAM-backed): week-over-week diffs and
+# other state that must outlive a restart.
+: "${STATE_DIR:=$APP_ROOT/state}"
 
 : "${HOST_TORRENTS_ROOT:=/mnt/user/Torrents}"
 : "${HOST_COMPLETE:=$HOST_TORRENTS_ROOT/complete}"
@@ -58,6 +61,10 @@ export LC_ALL="$MUSIC_PIPELINE_LOCALE"
 
 : "${LIDARR_URL:=http://localhost:8686}"
 : "${LIDARR_KEY_FILE:=$APP_ROOT/.lidarr-api-key}"
+# Music root as Lidarr's container sees it (used to translate beets paths).
+: "${LIDARR_MUSIC_ROOT:=$CONTAINER_MUSIC_ROOT}"
+# Max Case C rows the sync diagnoses via Lidarr's manual-import preview.
+: "${LIDARR_SYNC_DIAGNOSE_MAX:=20}"
 
 : "${NTFY_BASE_URL:=http://localhost:2586}"
 : "${NTFY_TOPIC:=music-pipeline}"
@@ -96,13 +103,14 @@ export LC_ALL="$MUSIC_PIPELINE_LOCALE"
 : "${HEALTH_BEETS_PATHS_TSV:=$TMP_DIR/music-health-beets-paths.tsv}"
 : "${HEALTH_FS_PATHS_TSV:=$TMP_DIR/music-health-fs-paths.tsv}"
 : "${HEALTH_TRACK_COUNTS_TSV:=$TMP_DIR/music-health-track-counts.tsv}"
-: "${HEALTH_PREV_DUPS:=$TMP_DIR/music-health-prev-dups.tsv}"
-: "${HEALTH_PREV_ARTIST_DUPS:=$TMP_DIR/music-health-prev-artist-dups.tsv}"
-: "${HEALTH_PREV_BROKEN:=$TMP_DIR/music-health-prev-broken.tsv}"
-: "${HEALTH_PREV_ORPHANS:=$TMP_DIR/music-health-prev-orphans.tsv}"
-: "${HEALTH_PREV_PARTIAL:=$TMP_DIR/music-health-prev-partial.tsv}"
+: "${HEALTH_PREV_DUPS:=$STATE_DIR/music-health-prev-dups.tsv}"
+: "${HEALTH_PREV_ARTIST_DUPS:=$STATE_DIR/music-health-prev-artist-dups.tsv}"
+: "${HEALTH_PREV_BROKEN:=$STATE_DIR/music-health-prev-broken.tsv}"
+: "${HEALTH_PREV_ORPHANS:=$STATE_DIR/music-health-prev-orphans.tsv}"
+: "${HEALTH_PREV_PARTIAL:=$STATE_DIR/music-health-prev-partial.tsv}"
 
 : "${BACKUP_ROOT:=$APP_ROOT/reprocess-backups}"
+: "${PIPELINE_ARR_SKIP_SEEN:=$STATE_DIR/pipeline-arr-skipped.txt}"
 : "${BACKUP_RETENTION_DAYS:=30}"
 : "${BEETS_IMPORT_TIMEOUT:=1800}"
 : "${SYNC_NORM_AWK:=$APP_ROOT/lib/sync-norm.awk}"
